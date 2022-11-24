@@ -3,6 +3,8 @@ let serviceAccount = require("./TestProj/test-project-3d277-firebase-adminsdk-qf
 let SpotifyWebApi = require('spotify-web-api-node');
 let spotifyApi = new SpotifyWebApi();
 
+//line to test git commit
+
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
 });
