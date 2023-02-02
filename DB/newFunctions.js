@@ -10,16 +10,17 @@ const db = admin.firestore();
 // Create and Deploy Your First Cloud Functions
 // https://firebase.google.com/docs/functions/write-firebase-functions
 
+//replace everything in the {} for the formats
+
 //register an account on the DB
-//FORMAT: URL...?text={"uname":"uname","id":"id","email":"email","password":"password"}
+//FORMAT: URL...?uname={uname}&id={id}&email={email}&password={password}
 exports.registerAccount = functions.https.onRequest(async (req, res) => {
-  //parse the JSON
-  const json = JSON.parse(req.query.text);
+  //get variables
+  const newUname = req.query.uname;
   //TODO: implement auto id counter
-  const newUname = json.uname;
-  const newID = json.id;
-  const newEmail = json.email;
-  const pswd = json.password;
+  const newID = req.query.id;
+  const newEmail = req.query.email;
+  const pswd = req.query.password;
 
   //access the Accounts collection and add the required info under the username
   await db.collection("Accounts").doc(newUname).set({
@@ -38,11 +39,11 @@ exports.registerAccount = functions.https.onRequest(async (req, res) => {
 
 //function to login - temporary until firebase auth is set up
 //successful login should be followed with a call to getProfileInfo
-//FORMAT: URL...?text={"username":"uname","password":"password"}
+//FORMAT: URL...?username={username}&password={password}
 exports.login = functions.https.onRequest(async (req, res) => {
-  const json = JSON.parse(req.query.text);
-  const uname = json.username;
-  const pswd = json.password;
+  //get variables
+  const uname = req.query.username;
+  const pswd = req.query.password;
 
   //access the account and check the password is correct
   await db.collection("Accounts").doc(uname).get().then((docsnap) => {
@@ -61,14 +62,13 @@ exports.login = functions.https.onRequest(async (req, res) => {
 });
 
 //update any part of a profile with a provided id, field and value
-//FORMAT: URL...?text={"id":"id","field":"field","value":"value"}
+//FORMAT: URL...?id={id}&field={field}&value={value}
 //^ must provide a valid ID
 exports.updateProfile = functions.https.onRequest(async (req, res) => {
-  //parse the JSON
-  const json = JSON.parse(req.query.text);
-  const id = json.id;
-  const field = json.field;
-  const value = json.value;
+  //get variables
+  const id = req.query.id;
+  const field = req.query.field;
+  const value = req.query.value;
 
   //get a reference to the profile
   const profileRef = db.collection("Profiles").doc(id);
@@ -90,28 +90,27 @@ exports.updateProfile = functions.https.onRequest(async (req, res) => {
 });
 
 //function dedicated to receiving an ID of a given username
-//FORMAT: URL...?text=uname
+//FORMAT: URL...?uname={uname}
 exports.getID = functions.https.onRequest(async (req, res) => {
   //access the document relating to the 
-  const ret = await db.collection("Accounts").doc(req.query.text).get().then((docSnap) => {
+  const ret = await db.collection("Accounts").doc(req.query.uname).get().then((docSnap) => {
     if (docSnap.exists) {
       return docSnap.data()["id"];
     }
     else {
-      return `Failed to find user ${req.query.text}`;
+      return `Failed to find user ${req.query.uname}`;
     }
   });
   res.json(ret);
 });
 
 //function to provide all the profile info, or just one field, based on the input
-//FORMAT: URL...?text={"id":"id","field":"field"}
+//FORMAT: URL...?id={id}&field={field}
 //for all info the field should be null without quotes
 exports.getProfileInfo = functions.https.onRequest(async (req, res) => {
-  //parse the JSON
-  const json = JSON.parse(req.query.text);
-  const id = json.id;
-  const field = json.field;
+  //get the variables
+  const id = req.query.id;
+  const field = req.query.field;
 
   //access the appropriate document in the profiles collection
   const ret = await db.collection("Profiles").doc(id).get().then((docSnap) => {
