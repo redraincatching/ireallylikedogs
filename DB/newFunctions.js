@@ -31,7 +31,7 @@ exports.registerAccount = functions.https.onRequest(async (req, res) => {
     //initialise the Profile for the user - this can be anything
     db.collection("Profiles").doc(newID).set({
       username: newUname,
-      pfp: null,
+      pfp: "Not Set",
     });
     res.json({ result: `Created account for username ${newUname}` });
   });
@@ -116,7 +116,13 @@ exports.getProfileInfo = functions.https.onRequest(async (req, res) => {
   const ret = await db.collection("Profiles").doc(id).get().then((docSnap) => {
     if (docSnap.exists) {
       //return the entire profile if the field is null, otherwise return the desired field
-      return field == null ? docSnap.data() : docSnap.data()[field];
+      if(field == null){
+        return docSnap.data();
+      }
+      else{
+        const data = docSnap.data()[field];
+        return data == null ? "Unknown Field" : data;
+      }
     }
   });
   res.json(ret);
