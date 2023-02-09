@@ -42,28 +42,32 @@ exports.registerAccount = functions.https.onRequest(async (req, res) => {
 
 //function to login - temporary until firebase auth is set up
 //successful login should be followed with a call to getProfileInfo
-//FORMAT: URL...?username={username}&password={password}
-exports.login = functions.https.onRequest(async (req, res) => {
-  cors(req, res, async () => {
+exports.login = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
     //get variables
-    const uname = req.query.username;
-    const pswd = req.query.password;
-  
+    //accessing the request object from vue
+    const uname = req.body.data.username;
+    const pswd = req.body.data.password;
+
     //access the account and check the password is correct
-    await db.collection("Accounts").doc(uname).get().then((docsnap) => {
+    db.collection("Accounts").doc(uname).get().then((docsnap) => {
       if (docsnap.exists) {
+        
         if (docsnap.data()["password"] == pswd) {
-          res.json({ result: "login successful", bool: true });
+          res.send({ result: "login successful", bool: true , username: uname});
+          return;
         }
         else {
-          res.json({ result: "incorrect username for password", bool: false});
+          res.send({ result: "incorrect username for password", bool: false});
+          return;
         }
       }
       else {
-        res.json({ result: "user does not exist", bool: false });
+        res.send({ result: "user does not exist", bool: false, username: uname});
+        return ;
       }
     });
-  }); 
+  });
 });
 
 //update any part of a profile with a provided id, field and value
