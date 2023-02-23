@@ -1,13 +1,14 @@
 <script>
 import app from "../../api/firebase";
-import {getFunctions, httpsCallable} from "firebase/functions";
+import {getFunctions, httpsCallable, connectFunctionsEmulator} from "firebase/functions";
 
 export default {
   data() {
     return {
       email: "",
       username: "",
-      password: ""
+      password: "",
+      loginsuccess: true
     }
   },  
   methods: {
@@ -23,15 +24,33 @@ export default {
 
     login(){
       const functions = getFunctions(app);
+      connectFunctionsEmulator(functions, "localhost", 5001);
       const login = httpsCallable(functions, "login");
-      login({"uname": this.username, "pswd": this.password}).then((result) => {
-        console.log(result);
-        this.closesignin(0);
+      const getID = httpsCallable(functions, "getID");
+      const getProfileInfo = httpsCallable(functions, "getProfileInfo"); 
+      login({"username": this.username, "password": this.password}).then((succ) => {
+        this.loginsuccess = succ.data.bool;
+        if(succ.data.bool == true){
+          getID({"uname": this.username}).then((res) => {
+            getProfileInfo({"id": res.data.id}).then((info) => {
+              console.log(info.data);
+              this.closesignin(0);
+            });
+          });
+        }
       });
     },
 
     register(){
-
+      const functions = getFunctions(app);
+      connectFunctionsEmulator(functions, "localhost", 5001);
+      const register = httpsCallable(functions, "registerAccount");
+      let id = Math.floor(Math.random() * 100);
+      register({"uname": this.username, "id": id, "email": this.email, "pswd": this.password}).then((result) => {
+        console.log(result.data);
+        this.closesignin(1);
+        this.login();
+      });
     }
   }
 }
@@ -48,6 +67,9 @@ export default {
   <!-- Modal content -->
   <div class="modal-content">
     <span class="close" @click="closesignin(0)">&times;</span>
+    <div v-if="!loginsuccess">
+      <label style="color:red;">Login Failed</label>
+    </div>
     <p style="font-size: 40px;">Sign in</p>
     <label style="color: #949494;">Username</label>
     <input style="height: 40px; border-radius: 7.5px;" required v-model="username"><br>
