@@ -1,17 +1,15 @@
-<template>
-<section id="hero" class="hero">
-          <div class="row justify-content-center">
-            <div class="col-lg-6 text-center">
-              <br><br><br><br><br><br><br>
-              <h2 style="font-size: 57px; color: white;">Welcome to Crate Digger</h2><br>
-              <p data-aos="fade-up" style="font-size: 20px; color: #949494;">We recommend you artists, you write reviews and rate them</p>
+<template >
+<meta charset="utf-8">
+<section id="hero" class="hero" >
+              <br><br><br><br><br><br>
+              <h2 class="animated bounce infinite" style="font-size: 57px; color: white;" >Welcome to Crate Digger</h2><br>
+              <p style="font-size: 20px; color: #949494;">We recommend you artists, you write reviews and rate them</p>
 
               <router-link class="btn-get-started" to="/SearchPage">Search</router-link>
               <br><br><br><br><br><br><br><br>
-            </div>
-          </div>
+ 
   </section>
-
+   
   <div id="myModal" class="modal"> <!-- Sign in popup  -->
   <!-- Modal content -->
   <div class="modal-content">
@@ -43,45 +41,26 @@
   <section  id="services" class="services section-bg">
       <div class="container" data-aos="fade-up">
         <div class="section-header">
-          <h2 >Crate Digger lets you...</h2></div>
-            <div class="row gy-4">
-                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
-                    <div class="service-item  position-relative">
-                      <br><br>
-                        <h3 class="heading">Rate artists</h3>
-                        <p>Rate each artist on a five-star scale to record and share your reaction</p>
-                        <router-link to="/AboutUs" class="readmore stretched-link"></router-link>
-                        <br><br>
-            
-            </div></div><!-- End Service Item -->
+          <h2 >Crate Digger lets you...</h2></div></div>
 
-                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
-                    <div class="service-item position-relative">
-
-
-                      <br><br>
-                        <h3  id="x3" >Write reviews</h3>
-                        <p>Write and share reviews on your favourite or least favourite artists</p>
-                        <router-link to="/AboutUs" class="readmore stretched-link"></router-link>
-                        
-                        <br><br>
-
-             </div> </div><!-- End Service Item -->
-
-                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="400">
-                        <div class="service-item position-relative">
-                          <br><br>
-                            <h3 id="x3" >Get Recommendations</h3>
-                            <p>We recommend you artists based on your favourite songs and artists</p>
-                            <router-link to="/AboutUs" class="readmore stretched-link"></router-link>
-                           <br><br>
-                </div> </div></div></div><!-- End Service Item -->
      </section>
-    
+     
+   
+
   </template>
   
 <style scoped>
+
+  .boxes{
+    color: white
+  }
+
+  .boxes:hover{
+    color: #1DB954; 
+  }
+
   .hero{
+    text-align: center;
     background-color: black;
     padding-top: 12.5%;
   }
@@ -102,12 +81,14 @@
 
 .btn-get-started:hover {
   background: #1DB954;
-  color: black
+  color: black;
 }
 
 
 .heading:hover{
   color: #1DB954;
+  width: 100px;
+  background-color: blueviolet;
 }
 
 .services{
@@ -128,13 +109,7 @@
   color: white;
 }
 
-.service-item {
-  background-color: #262626;
-}
 
-.service-item:hover{
-  color: #1DB954;
-}
   
   /* The Modal (background) */
   .modal {

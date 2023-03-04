@@ -1,20 +1,29 @@
 <template>
-      <section id="hero" class="hero">
-          <div class="row justify-content-center">
-            <div class="col-lg-6 text-center">
-              <br><br><br><br><br><br><br>
-              <h2 style="font-size: 57px;">Search page</h2><br>
+
+      <section id="SearchPage" class="SearchPage">
+        
+              <h2 class="center">
+                <input placeholder="What artist do you want to see?" type="search" style="width:50%; height:50px; border" > </h2><br>
+                
+              
               <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
-            </div>
-          </div>
+
   </section>
 </template>
 
 <style scoped>
-.hero{
+.SearchPage{
+    font-family:"Roboto", sans-serif;
     background-color: black;
     color: white;
     padding-top: 12.5%;
+}
+.center {
+  position: absolute;
+  top: 30%;
+  width: 100%;
+  text-align: center;
+  font-size: 18px;
 }
 
 
