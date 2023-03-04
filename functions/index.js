@@ -14,29 +14,26 @@ const db = admin.firestore();
 //replace everything in the {} for the formats
 
 //register an account on the DB
-//FORMAT: URL...?uname={uname}&id={id}&email={email}&password={password}
-exports.registerAccount = functions.https.onRequest(async (req, res) => {
-  cors(req, res, async () => {
+exports.registerAccount = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
     //get variables
-    const newUname = req.query.uname;
-    //TODO: implement auto id counter
-    const newID = req.query.id;
-    const newEmail = req.query.email;
-    const pswd = req.query.password;
-  
-    //access the Accounts collection and add the required info under the username
-    await db.collection("Accounts").doc(newUname).set({
-      id: newID,
-      email: newEmail,
-      password: pswd
-    }).then(() => {
-      //initialise the Profile for the user - this can be anything
-      db.collection("Profiles").doc(newID).set({
-        username: newUname,
-        pfp: "Not Set",
-      });
-      res.json({ result: `Created account for username ${newUname}` });
-    });
+    const ID = req.body.data.id;
+    const name = req.body.data.username;
+
+    //initialise the Profile for the user - this can be anything
+    db.collection("UserIDs").doc(`${name}`).set({
+      id: ID
+    }).then(
+      db.collection("UserData").doc(`${ID}`).set({
+        likedArtists: [],
+        likedAlbums: [],
+        id: ID
+      })
+    ).then(
+      res.send({ result: "Created Account" })
+    );
+    
+    return;
   });
 });
 
@@ -48,13 +45,13 @@ exports.login = functions.https.onRequest((req, res) => {
     //accessing the request object from vue
     const uname = req.body.data.username;
     const pswd = req.body.data.password;
+    const email = req.body.data.email;
 
     //access the account and check the password is correct
     db.collection("Accounts").doc(uname).get().then((docsnap) => {
       if (docsnap.exists) {
-        
         if (docsnap.data()["password"] == pswd) {
-          res.send({ result: "login successful", bool: true , username: uname});
+          res.send({data: { result: "login successful", bool: true , username: uname}});
           return;
         }
         else {
@@ -99,40 +96,48 @@ exports.updateProfile = functions.https.onRequest(async (req, res) => {
 });
 
 //function dedicated to receiving an ID of a given username
-//FORMAT: URL...?uname={uname}
-exports.getID = functions.https.onRequest(async (req, res) => {
-  //access the document relating to the 
-  const ret = await db.collection("Accounts").doc(req.query.uname).get().then((docSnap) => {
-    if (docSnap.exists) {
-      return docSnap.data()["id"];
-    }
-    else {
-      return `Failed to find user ${req.query.uname}`;
-    }
+exports.getID = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {    
+    //access the document relating to the 
+    db.collection("Accounts").doc(req.body.data.uname).get().then((docSnap) => {
+      if (docSnap.exists) {
+        res.send({data:{id: docSnap.data()["id"]}});
+        return;
+      }
+      else {
+        res.send({data: `Failed to find user ${req.body.data.uname}`});
+        return;
+      }
+    });
   });
-  res.json(ret);
 });
 
 //function to provide all the profile info, or just one field, based on the input
 //FORMAT: URL...?id={id}&field={field}
 //for all info the field parameter should be left out
-exports.getProfileInfo = functions.https.onRequest(async (req, res) => {
-  //get the variables
-  const id = req.query.id;
-  const field = req.query.field;
-
-  //access the appropriate document in the profiles collection
-  const ret = await db.collection("Profiles").doc(id).get().then((docSnap) => {
-    if (docSnap.exists) {
-      //return the entire profile if the field is null, otherwise return the desired field
-      if(field == null){
-        return docSnap.data();
+exports.getProfileInfo = functions.https.onRequest( (req, res) => {
+  cors(req, res, () => {
+    //get the variables
+    const id = req.body.data.id;
+    const field = req.body.data.field;
+  
+    //access the appropriate document in the profiles collection
+    db.collection("UserData").doc(`${id}`).get().then((docSnap) => {
+      if (docSnap.exists) {
+        //return the entire profile if the field is null, otherwise return the desired field
+        if(field == null){
+          res.send({data: docSnap.data()});
+        }
+        else{
+          const data = docSnap.data()[field];
+          if(data == null){
+            res.send({data: "Unknown Field"});
+          }
+          else{
+            res.send({data: data});
+          }
+        }
       }
-      else{
-        const data = docSnap.data()[field];
-        return data == null ? "Unknown Field" : data;
-      }
-    }
+    });
   });
-  res.json(ret);
 });
