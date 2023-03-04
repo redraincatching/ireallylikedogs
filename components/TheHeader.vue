@@ -1,7 +1,7 @@
 <script>
 import app from "../../api/firebase";
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from "firebase/functions";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, connectAuthEmulator } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 
 export default {
   data() {
@@ -9,9 +9,24 @@ export default {
       email: "",
       username: "",
       password: "",
-      loggedIn: false,
       loading: false,
       loadingBar: null,
+      isLoggedIn: false,
+    }
+  },
+  created() {
+    const auth = getAuth(app);
+    onAuthStateChanged(auth, (user) => {
+      console.log(user);
+      this.isLoggedIn = user ? true : false;
+    });
+  },
+  computed: {
+    checkLogin() {
+      const auth = getAuth(app);
+      onAuthStateChanged(auth, (user) => {
+        this.isLoggedIn = user ? true : false;
+      });
     }
   },
   methods: {
@@ -33,21 +48,21 @@ export default {
     },
 
     //show the loading bar
-    showLoad(){
-      if(!this.loading){
+    showLoad() {
+      if (!this.loading) {
         this.loadingBar = this.$loading.show();
         this.loading = true;
       }
     },
 
     //hide the loading bar
-    hideLoad(){
+    hideLoad() {
       this.loadingBar.hide();
       this.loading = false;
     },
 
     //regex test to see if its an email
-    isEmail(e){
+    isEmail(e) {
       return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(e);
     },
 
@@ -57,18 +72,18 @@ export default {
       this.showLoad(); //loading
 
       //get the id if the email is a username
-      if(!this.isEmail(this.email)){
+      if (!this.isEmail(this.email)) {
         //get the id from the username
       }
 
       //get necessary components
       const auth = getAuth(app);
       const functions = getFunctions(app);
-      
+
       //TODO: remove emulator line when deploying
       connectFunctionsEmulator(functions, "localhost", 5001);
       // connectAuthEmulator(auth, "http://localhost:5003");
-      
+
       //sign in with firebase auth using email and password
       signInWithEmailAndPassword(auth, this.email, this.password).then((userCred) => {
         const user = userCred.user;
@@ -80,13 +95,14 @@ export default {
         getProfileInfo({ "id": user.uid }).then((info) => {
           console.log(info.data);
           this.closesignin(0); //close the sign in popup
-          this.loggedIn = true;
+          this.$router.push({ path: '/AccountPage' });
+          this.isLoggedIn = true;
           this.hideLoad();  //done loading
-          this.$router.push({path: '/AccountPage'});
+        }).catch((error) => {
+          console.log(error);
+          this.hideLoad();
         });
       });
-
-      this.hideLoad();  //done loading
     },
 
     //register an account
@@ -97,18 +113,18 @@ export default {
       //get auth component
       const auth = getAuth(app);
       const functions = getFunctions(app);
-      
+
       //TODO: remove emulator line when deploying
       connectFunctionsEmulator(functions, "localhost", 5001);
       // connectAuthEmulator(auth, "http://localhost:5003");
-      
+
       //create a user in firebaser
       createUserWithEmailAndPassword(auth, this.email, this.password).then((userCred) => {
         const user = userCred.user;
-        
+
         //define the register function
         const register = httpsCallable(functions, "registerAccount");
-        
+
         //register function sets up the database for this users data
         register({ "id": user.uid, "username": this.username }).then((result) => {
           console.log(result.data);
@@ -120,14 +136,20 @@ export default {
         console.log(error.message);
         this.hideLoad();  //done loading
       });
+    },
+
+    logout() {
+      this.showLoad();
+      const auth = getAuth(app);
+      auth.signOut();
+      this.isLoggedIn = false;
+      this.hideLoad();
     }
   }
 }
 </script>
 
 <template>
-  
-  
   <div id="myModal" class="modal"> <!-- Sign in popup  -->
     <!-- Modal content -->
     <div style="align-items: center" class="modal-content">
@@ -178,10 +200,12 @@ export default {
           <li class="nav-item" style="margin-right: 30px;">
             <router-link to="/">Home</router-link>
           </li>
-          <li v-if="!loggedIn" class="nav-item" style="list-style-type: none; margin-right: 30px;"><a class="myBtn1" id="myBtn1"
-              @click="opensignin(1)">Sign Up</a></li>
-          <li v-if="!loggedIn" class="nav-item" style="list-style-type: none; margin-right: 30px;"><a class="myBtn" id="myBtn"
-              @click="opensignin(0)">Login</a></li>
+          <li v-if="!this.isLoggedIn" class="nav-item" style="list-style-type: none; margin-right: 30px;"><a
+              class="myBtn1" id="myBtn1" @click="opensignin(1)">Sign Up</a></li>
+          <li v-if="!this.isLoggedIn" class="nav-item" style="list-style-type: none; margin-right: 30px;"><a class="myBtn"
+              id="myBtn" @click="opensignin(0)">Login</a></li>
+          <li v-if="this.isLoggedIn" class="nav-item" style="list-style-type: none; margin-right: 30px;"><a class="myBtn"
+              id="myBtn" @click="logout()">Log Out</a></li>
           <li class="nav-item" style="margin-right: 30px;">
             <router-link to="/AboutUs">About Us</router-link>
           </li>
