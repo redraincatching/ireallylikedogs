@@ -17,7 +17,6 @@ export default {
   created() {
     const auth = getAuth(app);
     onAuthStateChanged(auth, (user) => {
-      console.log(user);
       this.isLoggedIn = user ? true : false;
     });
   },
@@ -61,9 +60,30 @@ export default {
       this.loading = false;
     },
 
-    //regex test to see if its an email
-    isEmail(e) {
-      return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(e);
+    //get the email if the email is a username
+    verifyEmail(){
+      //regex test
+      if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(this.email)) {
+        console.log("Not Email; Getting ID from Username");
+        
+        const functions = getFunctions(app);
+
+        //TODO: remove emulator line when deploying
+        connectFunctionsEmulator(functions, "localhost", 5001);
+
+        //define the function
+        const getID = httpsCallable(functions, "getEmail");
+  
+        getID({username: this.email}).then((res) => {
+          console.log(res.data);
+          this.email = res.data.email;
+        }).then(() => {
+          this.login();
+        });
+      }
+      else{
+        this.login();
+      }
     },
 
     //login function
@@ -71,18 +91,13 @@ export default {
     login() {
       this.showLoad(); //loading
 
-      //get the id if the email is a username
-      if (!this.isEmail(this.email)) {
-        //get the id from the username
-      }
-
       //get necessary components
       const auth = getAuth(app);
       const functions = getFunctions(app);
 
       //TODO: remove emulator line when deploying
       connectFunctionsEmulator(functions, "localhost", 5001);
-      // connectAuthEmulator(auth, "http://localhost:5003");
+
 
       //sign in with firebase auth using email and password
       signInWithEmailAndPassword(auth, this.email, this.password).then((userCred) => {
@@ -116,7 +131,6 @@ export default {
 
       //TODO: remove emulator line when deploying
       connectFunctionsEmulator(functions, "localhost", 5001);
-      // connectAuthEmulator(auth, "http://localhost:5003");
 
       //create a user in firebaser
       createUserWithEmailAndPassword(auth, this.email, this.password).then((userCred) => {
@@ -126,7 +140,7 @@ export default {
         const register = httpsCallable(functions, "registerAccount");
 
         //register function sets up the database for this users data
-        register({ "id": user.uid, "username": this.username }).then((result) => {
+        register({ "id": user.uid, "username": this.username, "email": this.email }).then((result) => {
           console.log(result.data);
           this.closesignin(1);  //close the register popup
           this.login(); //log the user in
@@ -159,7 +173,7 @@ export default {
       <input style="height: 40px; border-radius: 7.5px;" required v-model="email"><br>
       <label style="color: #949494;"> Password</label>
       <input style="height: 40px; border-radius: 7.5px;" required v-model="password"><br>
-      <a @click="login" class="btn-get-started">Sign in</a>
+      <a @click="verifyEmail()" class="btn-get-started">Sign in</a>
     </div>
   </div>
 
