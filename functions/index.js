@@ -3,6 +3,7 @@ let admin = require("firebase-admin");
 let cors = require("cors")({origin: true});
 let serviceAccount = require("./test-project-3d277-firebase-adminsdk-qfyec-e57396a808.json");
 let reqPromise = require('request-promise');
+const { compileScript } = require("vue/compiler-sfc");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -30,7 +31,10 @@ exports.registerAccount = functions.https.onRequest((req, res) => {
       db.collection("UserData").doc(`${ID}`).set({
         likedArtists: [],
         likedAlbums: [],
-        id: ID
+        id: ID,
+        bio: "",
+        username: name,
+        pfpURL: "",
       })
     ).then(
       res.send({ result: "Created Account" })
@@ -40,6 +44,7 @@ exports.registerAccount = functions.https.onRequest((req, res) => {
   });
 });
 
+//--OLD--
 //function to login - temporary until firebase auth is set up
 //successful login should be followed with a call to getProfileInfo
 exports.login = functions.https.onRequest((req, res) => {
@@ -73,28 +78,20 @@ exports.login = functions.https.onRequest((req, res) => {
 //update any part of a profile with a provided id, field and value
 //FORMAT: URL...?id={id}&field={field}&value={value}
 //^ must provide a valid ID
-exports.updateProfile = functions.https.onRequest(async (req, res) => {
-  //get variables
-  const id = req.query.id;
-  const field = req.query.field;
-  const value = req.query.value;
+exports.updateProfile = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    //get variables
+    const id = req.body.data.id;
+    const field = req.body.data.field;
+    const value = req.body.data.value;
+  
+    let updateData = {};  //create an empty object
+    updateData[field] = value;  //assign the value to a field in the object
 
-  //get a reference to the profile
-  const profileRef = db.collection("Profiles").doc(id);
-  await profileRef.get().then((docSnap) => {
-    if (docSnap.exists) {
-      let updateData = {};  //create an empty object
-      updateData[field] = value;  //assign the value to a field in the object
-
-      //use a firebase feature to update the data
-      //only updates based on matching fields, does not overwrite the entire document
-      profileRef.update(updateData).then(() => {
-        res.json({ result: `Updated data regarding ${field} with ${value}` });
-      });
-    }
-    else {
-      res.json({ result: "Failed to find document" });
-    }
+    //get a reference to the profile
+    db.collection("UserData").doc(`${id}`).update(updateData).then(() => {
+      res.send({ data: {code: 0, body: `Updated data regarding ${field} with ${value}` }});
+    });
   });
 });
 
@@ -104,12 +101,30 @@ exports.getEmail = functions.https.onRequest((req, res) => {
     //access the document relating to the given email to get the uid
     db.collection("UserIDs").doc(req.body.data.username).get().then((docSnap) => {
       if (docSnap.exists) {
-        res.send({data:{email: docSnap.data()["email"]}});
+        res.send({data: {code: 0, body: docSnap.data()["email"]}});
         return;
       }
       else {
-        res.send({data: `Failed to find user ${req.body.data.username}`});
+        res.send({data: {code: 1, body: `Failed to find user ${req.body.data.username}`}});
         return;
+      }
+    });
+  });
+});
+
+//finds if the submitted username is already in the database
+exports.checkUniqueUsername = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    const username = req.body.data.username;
+    
+    //try and find the user document
+    db.collection("UserIDs").doc(`${username}`).get().then((docSnap) => {
+      if(docSnap.exists){
+        res.send({data: {isTaken: true, message: "Username Taken"}});
+        return;
+      }
+      else{
+        res.send({data: {isTaken: false, message: "Username Available"}})
       }
     });
   });
