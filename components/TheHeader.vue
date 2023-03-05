@@ -9,6 +9,7 @@ export default {
       email: "",
       username: "",
       password: "",
+      uid: "",
       loading: false,
       loadingBar: null,
       isLoggedIn: false,
@@ -60,34 +61,48 @@ export default {
       this.loading = false;
     },
 
+    isEmail(e) {
+      return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(e);
+    },
+
     //get the email if the email is a username
-    verifyEmail(){
+    //otherwise just calls login
+    //necessary to allow the promise to resolve from getEmail before trying to sign in to firebase
+    beforeLogin() {
       //regex test
-      if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(this.email)) {
+      if (!this.isEmail(this.email)) {
         console.log("Not Email; Getting ID from Username");
-        
+
         const functions = getFunctions(app);
 
         //TODO: remove emulator line when deploying
         connectFunctionsEmulator(functions, "localhost", 5001);
 
         //define the function
-        const getID = httpsCallable(functions, "getEmail");
-  
-        getID({username: this.email}).then((res) => {
-          console.log(res.data);
-          this.email = res.data.email;
+        const getEmail = httpsCallable(functions, "getEmail");
+        console.log(this.email);
+        getEmail({ username: this.email }).then((res) => {
+          console.log(res.data.body);
+          switch (res.data.code) {
+            case 0:
+              this.email = res.data.body;
+              break;
+            case 1:
+              return;
+            default:
+              console.log("Unknown Code Returned From Server");
+              break;
+          }
         }).then(() => {
           this.login();
         });
       }
-      else{
+      else {
         this.login();
       }
     },
 
     //login function
-    //works for email or username
     login() {
       this.showLoad(); //loading
 
@@ -98,25 +113,33 @@ export default {
       //TODO: remove emulator line when deploying
       connectFunctionsEmulator(functions, "localhost", 5001);
 
-
       //sign in with firebase auth using email and password
       signInWithEmailAndPassword(auth, this.email, this.password).then((userCred) => {
         const user = userCred.user;
+        this.uid = user.uid;
+        this.closesignin(0); //close the sign in popup
+        this.$router.push({ name: 'AccountPage', params: {uid: user.uid}});
+        this.isLoggedIn = true;
+        this.hideLoad();  //done loading
+      }).catch((error) => {
+        //handle the firebase errors
+        switch (error.code) {
+          case "auth/wrong-password":
+            console.log("Incorrect Password");
+            break;
+          case "auth/user-not-found":
+            console.log("Incorrect Username or Email");
+            break;
+          case "auth/missing-email":
+            console.log("Please Enter Your Username or Email");
+            break;
+          default:
+            console.log(error.code);
+            console.log(error.message);
+            break;
+        }
 
-        //define getProfileInfo
-        const getProfileInfo = httpsCallable(functions, "getProfileInfo");
-        //get the profile information of the user once their are signed in
-        //stored under the users id
-        getProfileInfo({ "id": user.uid }).then((info) => {
-          console.log(info.data);
-          this.closesignin(0); //close the sign in popup
-          this.$router.push({ path: '/AccountPage' });
-          this.isLoggedIn = true;
-          this.hideLoad();  //done loading
-        }).catch((error) => {
-          console.log(error);
-          this.hideLoad();
-        });
+        this.hideLoad();
       });
     },
 
@@ -125,30 +148,70 @@ export default {
     register() {
       this.showLoad();  //loading
 
-      //get auth component
-      const auth = getAuth(app);
+      //dont run if the email is invalid
+      if (!this.isEmail(this.email)) {
+        console.log("invalid email");
+        this.hideLoad();
+        return;
+      }
+
+      if(this.username == ""){
+        console.log("Enter a Username");
+        this.hideLoad();
+        return;
+      }
+
+      //get componenets
       const functions = getFunctions(app);
+      const auth = getAuth(app);
 
       //TODO: remove emulator line when deploying
       connectFunctionsEmulator(functions, "localhost", 5001);
 
-      //create a user in firebaser
-      createUserWithEmailAndPassword(auth, this.email, this.password).then((userCred) => {
-        const user = userCred.user;
+      //define the function
+      const checkUname = httpsCallable(functions, "checkUniqueUsername");
 
-        //define the register function
-        const register = httpsCallable(functions, "registerAccount");
+      //check if the username is taken
+      checkUname({ "username": this.username }).then((res) => {
+        if (res.data.isTaken) {
+          console.log(res.data.message);
+          this.hideLoad();
+          return;
+        }
+        else {
+          console.log(res.data.message);
+        }
+        //create a user in firebaser
+        createUserWithEmailAndPassword(auth, this.email, this.password).then((userCred) => {
+          const user = userCred.user;
 
-        //register function sets up the database for this users data
-        register({ "id": user.uid, "username": this.username, "email": this.email }).then((result) => {
-          console.log(result.data);
-          this.closesignin(1);  //close the register popup
-          this.login(); //log the user in
+          //define the register function
+          const register = httpsCallable(functions, "registerAccount");
+
+          //register function sets up the database for this users data
+          register({ "id": user.uid, "username": this.username, "email": this.email }).then((res) => {
+            console.log(res.data);
+            this.closesignin(1);  //close the register popup
+            this.login(); //log the user in
+          });
+        }).catch((error) => {
+          //handle firebase errors
+          if (error.code == "auth/email-already-in-use") {
+            console.log("Email Taken");
+          }
+          else if (error.code == "auth/weak-password") {
+            console.log("Weak Password");
+          }
+          else {
+            console.log(error.code);
+            console.log(error.message);
+          }
+
+          this.hideLoad();
         });
       }).catch((error) => {
-        console.log(error.code);
-        console.log(error.message);
-        this.hideLoad();  //done loading
+        console.log(error);
+        this.hideLoad();
       });
     },
 
@@ -156,6 +219,7 @@ export default {
       this.showLoad();
       const auth = getAuth(app);
       auth.signOut();
+      this.uid = "";
       this.isLoggedIn = false;
       this.hideLoad();
     }
@@ -173,7 +237,7 @@ export default {
       <input style="height: 40px; border-radius: 7.5px;" required v-model="email"><br>
       <label style="color: #949494;"> Password</label>
       <input style="height: 40px; border-radius: 7.5px;" required v-model="password"><br>
-      <a @click="verifyEmail()" class="btn-get-started">Sign in</a>
+      <a @click="beforeLogin()" class="btn-get-started">Sign in</a>
     </div>
   </div>
 
@@ -228,7 +292,7 @@ export default {
           </li>
 
           <li class="nav-item">
-            <router-link to="/AccountPage">Account</router-link>
+            <!-- <router-link :to="{ name: 'AccountPage', params: {uid: this.uid}}">Account</router-link> -->
           </li>
 
         </ul>

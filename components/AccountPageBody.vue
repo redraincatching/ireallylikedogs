@@ -3,24 +3,78 @@
 <script>
 import app from "../../api/firebase";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getFunctions, httpsCallable, connectFunctionsEmulator } from "firebase/functions";
+import { onUnmounted } from "vue";
 
 export default {
   data() {
     return {
+      //login information
       email: "",
       username: "",
       password: "",
+      uid: this.$route.params.uid,
       isLoggedIn: false,
+      listener: null,
+
+      //account information
+      name: "",
+      bio: "",
+      pfp: "",
+      likedAlbums: [],
+      likedArtists: [],
     }
   },
-  created() {
-    const auth = getAuth(app);
-    onAuthStateChanged(auth, (user) => {
-      console.log(user);
-      this.isLoggedIn = user ? true : false;
-    });
+  created(){
+    this.refresh(false);
+  },
+  watch: {
+    '$route.params': {
+      handler(newID){
+        this.refresh(false);
+      }
+    }
   },
   methods: {
+    refresh(unsub) {
+      console.log(this.uid);
+
+      const auth = getAuth(app);
+      const functions = getFunctions(app);
+      
+      let listener = onAuthStateChanged(auth, (user) => {
+        this.uid = this.$route.params.uid;
+        this.isLoggedIn = user ? true : false;
+
+        if (this.isLoggedIn && !unsub) {
+          console.log(this.uid);
+          connectFunctionsEmulator(functions, "localhost", 5001);
+
+          //define functions
+          const getProfileInfo = httpsCallable(functions, "getProfileInfo");
+
+          //get the profile information of the user once their are signed in
+          //stored under the users id
+          getProfileInfo({ "id": this.uid }).then((info) => {
+            console.log(info.data);
+            //set the data on the page
+            this.name = info.data.username;
+            this.bio = info.data.bio;
+            this.pfp = info.data.pfpURL;
+            this.likedAlbums = info.data.likedAlbums;
+            this.likedArtists = info.data.likedArtists;
+          }).catch((error) => {
+            console.log(error.code);
+            console.log(error.message);
+          });
+        }
+      });
+
+      if(unsub){
+        listener();
+      }
+    },
+
     closesignin(i) {
       let elms = document.querySelectorAll('.modal');
       elms[i].style.display = "none";
@@ -29,6 +83,23 @@ export default {
     opensignin(i) {
       let elms = document.querySelectorAll('.modal');
       elms[i].style.display = "flex";
+    },
+
+    logout() {
+      const auth = getAuth(app);
+      auth.signOut();
+      this.uid = "";
+      this.isLoggedIn = false;
+    }
+  },
+  computed: {
+    pfpURL() {
+      return this.pfp == "" ? "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" : this.pfp;
+    }
+  },
+  beforeUpdate(){
+    if(this.isLoggedIn){
+      this.refresh(true);
     }
   }
 }
@@ -50,52 +121,50 @@ export default {
           <label for="floatingInput">Change Profile Picture</label>
         </div>
         <br>
-  
-  
+
+
         <a @click="closesignin(2)" class="btn-get-started">Submit</a>
         <br>
         <a @click="closesignin(2)" class="btn-get-started">Sign out</a>
       </div>
     </div>
-  
+
     <head>
       <meta charset="UTF-8" />
       <meta http-equiv="X-UA-Compatible" content="IE=edge" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <!-- Font Awesome -->
     </head>
-  
+
     <body>
-  
+
       <div class="header__wrapper" style="background-color:black">
-  
+
         <div class="cols__container" style="background-color:#151515">
-  
+
           <div class="right__col" style="background-color:#151515">
-  
+
             <div class="left__col" style="background-color:#151515">
-  
+
               <div class="card" style="background-color:#151515">
-  
+
                 <div class="rounded-top text-white d-flex flex-row" style="background-color: #151515; height:200px;">
                   <div class="dropdown">
-  
+
                   </div>
                   <div class="ms-4 mt-5flex-column" style="width: 150px; background-color:#151515">
-                    <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
-                      alt="Generic placeholder image" class="img-fluid img-thumbnail mt-4 mb-2"
-                      style="width: 150px; z-index: 1">
+                    <img v-bind:src="this.pfpURL" alt="Generic placeholder image"
+                      class="img-fluid img-thumbnail mt-4 mb-2" style="width: 150px; z-index: 1">
                     <button type="button"
                       style="z-index: 1; background-color:white; border-radius:4px; border:none; width: 150px; "
                       @click="opensignin(2)">
                       Edit profile
                     </button>
-  
+
                   </div>
                   <div class="ms-3" style="margin-top: 30px;">
-                    <h2 style="text-align:left; font-size:50px">username</h2>
-                    <p>BIO BIO BIO BIO BIO BIO BIO BIO</p>
-  
+                    <h2 style="text-align:left; font-size:50px">{{ this.name }}</h2>
+                    <p>{{ this.bio }}</p>
                   </div>
                 </div>
                 <br>
@@ -112,7 +181,8 @@ export default {
                       alt="Photo" />
                     <img
                       src="https://upload.wikimedia.org/wikipedia/en/thumb/a/a7/Random_Access_Memories.jpg/220px-Random_Access_Memories.jpg" />
-                    <img src="https://mixdownmag.com.au/wp-content/uploads/2020/11/mixdown-magazine-kanye-west-mbdtf.jpg" />
+                    <img
+                      src="https://mixdownmag.com.au/wp-content/uploads/2020/11/mixdown-magazine-kanye-west-mbdtf.jpg" />
                     <img src="https://upload.wikimedia.org/wikipedia/en/3/3b/Dark_Side_of_the_Moon.png" />
                     <img src="https://upload.wikimedia.org/wikipedia/en/7/70/Graduation_%28album%29.jpg" />
                     <img
@@ -121,7 +191,8 @@ export default {
                       alt="Photo" />
                     <img
                       src="https://upload.wikimedia.org/wikipedia/en/thumb/a/a7/Random_Access_Memories.jpg/220px-Random_Access_Memories.jpg" />
-                    <img src="https://mixdownmag.com.au/wp-content/uploads/2020/11/mixdown-magazine-kanye-west-mbdtf.jpg" />
+                    <img
+                      src="https://mixdownmag.com.au/wp-content/uploads/2020/11/mixdown-magazine-kanye-west-mbdtf.jpg" />
                     <img src="https://upload.wikimedia.org/wikipedia/en/3/3b/Dark_Side_of_the_Moon.png" />
                     <img src="https://upload.wikimedia.org/wikipedia/en/7/70/Graduation_%28album%29.jpg" />
                     <img
@@ -130,12 +201,13 @@ export default {
                       alt="Photo" />
                     <img
                       src="https://upload.wikimedia.org/wikipedia/en/thumb/a/a7/Random_Access_Memories.jpg/220px-Random_Access_Memories.jpg" />
-                    <img src="https://mixdownmag.com.au/wp-content/uploads/2020/11/mixdown-magazine-kanye-west-mbdtf.jpg" />
+                    <img
+                      src="https://mixdownmag.com.au/wp-content/uploads/2020/11/mixdown-magazine-kanye-west-mbdtf.jpg" />
                     <img src="https://upload.wikimedia.org/wikipedia/en/3/3b/Dark_Side_of_the_Moon.png" />
                     <img src="https://upload.wikimedia.org/wikipedia/en/7/70/Graduation_%28album%29.jpg" />
                     <img
                       src="https://americansongwriter.com/wp-content/uploads/2022/07/Kanye-West-album-cover-kids-see-ghosts.jpg" />
-  
+
                   </div>
                 </div>
               </div>
@@ -147,7 +219,8 @@ export default {
     </body>
   </div>
   <div v-else>
-    <label>Not Logged In</label>
+    <a @click="opensignin(0)" class="btn-get-started" style="color: black;">Log In</a>
+    <a @click="opensignin(1)" class="btn-get-started" style="color: black;">Create</a>
   </div>
 </template>
 
@@ -320,4 +393,5 @@ a {
   .header__wrapper .cols__container .right__col nav {
     flex-direction: row;
   }
-}</style>
+}
+</style>
