@@ -20,10 +20,12 @@ exports.registerAccount = functions.https.onRequest((req, res) => {
     //get variables
     const ID = req.body.data.id;
     const name = req.body.data.username;
+    const email = req.body.data.email;
 
     //initialise the Profile for the user - this can be anything
     db.collection("UserIDs").doc(`${name}`).set({
-      id: ID
+      id: ID,
+      email: email
     }).then(
       db.collection("UserData").doc(`${ID}`).set({
         likedArtists: [],
@@ -96,17 +98,17 @@ exports.updateProfile = functions.https.onRequest(async (req, res) => {
   });
 });
 
-//function dedicated to receiving an ID of a given username
-exports.getID = functions.https.onRequest((req, res) => {
+//function dedicated to receiving an ID of a given email
+exports.getEmail = functions.https.onRequest((req, res) => {
   cors(req, res, () => {    
-    //access the document relating to the 
-    db.collection("Accounts").doc(req.body.data.uname).get().then((docSnap) => {
+    //access the document relating to the given email to get the uid
+    db.collection("UserIDs").doc(req.body.data.username).get().then((docSnap) => {
       if (docSnap.exists) {
-        res.send({data:{id: docSnap.data()["id"]}});
+        res.send({data:{email: docSnap.data()["email"]}});
         return;
       }
       else {
-        res.send({data: `Failed to find user ${req.body.data.uname}`});
+        res.send({data: `Failed to find user ${req.body.data.username}`});
         return;
       }
     });
