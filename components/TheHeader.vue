@@ -80,21 +80,21 @@ export default {
 
         //define the function
         const getEmail = httpsCallable(functions, "getEmail");
-        console.log(this.email);
         getEmail({ username: this.email }).then((res) => {
           console.log(res.data.body);
           switch (res.data.code) {
             case 0:
+              this.username = this.email;
               this.email = res.data.body;
+              this.login();
               break;
             case 1:
-              return;
+              console.log("User Does Not Exist");
+              break;
             default:
               console.log("Unknown Code Returned From Server");
               break;
           }
-        }).then(() => {
-          this.login();
         });
       }
       else {
@@ -219,6 +219,7 @@ export default {
       this.showLoad();
       const auth = getAuth(app);
       auth.signOut();
+      this.$router.push({path: '/AccountPage/'});
       this.uid = "";
       this.isLoggedIn = false;
       this.hideLoad();
@@ -292,7 +293,7 @@ export default {
           </li>
 
           <li class="nav-item">
-            <!-- <router-link :to="{ name: 'AccountPage', params: {uid: this.uid}}">Account</router-link> -->
+            <router-link :to="{ path: '/AccountPage/'}">Account</router-link>
           </li>
 
         </ul>

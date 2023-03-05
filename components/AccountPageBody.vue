@@ -4,7 +4,6 @@
 import app from "../../api/firebase";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from "firebase/functions";
-import { onUnmounted } from "vue";
 
 export default {
   data() {
@@ -13,46 +12,51 @@ export default {
       email: "",
       username: "",
       password: "",
-      uid: this.$route.params.uid,
+      uid: "",
       isLoggedIn: false,
       listener: null,
-
       //account information
       name: "",
       bio: "",
       pfp: "",
       likedAlbums: [],
       likedArtists: [],
+
+      //updated profile temp variables
+      newBio: "",
+      newURL: "",
     }
   },
   created(){
-    this.refresh(false);
+    this.refresh();
   },
+  // beforeUpdate(){
+  //   if(this.isLoggedIn){
+  //     this.refresh();
+  //   }
+  // },
   watch: {
     '$route.params': {
-      handler(newID){
-        this.refresh(false);
+      handler(){
+        this.refresh();
       }
     }
   },
   methods: {
-    refresh(unsub) {
+    refresh() {
       console.log(this.uid);
 
       const auth = getAuth(app);
       const functions = getFunctions(app);
       
       let listener = onAuthStateChanged(auth, (user) => {
-        this.uid = this.$route.params.uid;
+        this.uid = user ? user.uid : this.$route.params.uid; 
         this.isLoggedIn = user ? true : false;
-
-        if (this.isLoggedIn && !unsub) {
+        if (this.isLoggedIn && this.uid != undefined) {
           console.log(this.uid);
           connectFunctionsEmulator(functions, "localhost", 5001);
-
           //define functions
           const getProfileInfo = httpsCallable(functions, "getProfileInfo");
-
           //get the profile information of the user once their are signed in
           //stored under the users id
           getProfileInfo({ "id": this.uid }).then((info) => {
@@ -69,27 +73,53 @@ export default {
           });
         }
       });
-
-      if(unsub){
-        listener();
-      }
+      listener();
     },
-
     closesignin(i) {
       let elms = document.querySelectorAll('.modal');
       elms[i].style.display = "none";
     },
-
     opensignin(i) {
       let elms = document.querySelectorAll('.modal');
       elms[i].style.display = "flex";
     },
-
     logout() {
       const auth = getAuth(app);
       auth.signOut();
       this.uid = "";
       this.isLoggedIn = false;
+    },
+    updateProfile(){
+      const functions = getFunctions(app);
+      connectFunctionsEmulator(functions, "localhost", 5001);
+
+      //define function
+      const update = httpsCallable(functions, "updateProfile");
+
+      //update bio
+      if(this.newBio.length > 0){
+        console.log(this.uid);
+        update({"id": this.uid, "field": 'bio', "value": this.newBio}).then((res) => {
+          console.log(res.data.body);
+          this.newBio = "";
+          this.refresh();
+        }).catch((error) => {
+          console.log(error.code, error.message);
+        });
+      }
+
+      //update pfp
+      if(this.newURL.length > 0){
+        update({id: this.uid, field: 'pfpURL', value: this.newURL}).then((res) => {
+          console.log(res.data.body);
+          this.newURL = "";
+          this.refresh();
+        }).catch((error) => {
+          console.log(error.code, error.message);
+        });
+      }
+
+      this.closesignin(2);
     }
   },
   computed: {
@@ -97,11 +127,7 @@ export default {
       return this.pfp == "" ? "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" : this.pfp;
     }
   },
-  beforeUpdate(){
-    if(this.isLoggedIn){
-      this.refresh(true);
-    }
-  }
+  
 }
 </script>
 <template>
@@ -112,20 +138,20 @@ export default {
         <span class="close" @click="closesignin(2)">&times;</span>
         <h1 class="h3 mb-3 fw-normal" style="color:white; font-size:40px">Edit Profile</h1>
         <div class="form-floating">
-          <input class="form-control" id="floatingInput" required v-model="email">
+          <input class="form-control" id="floatingInput" required v-model="newBio">
           <label for="floatingInput">Edit Bio</label>
         </div>
         <br>
         <div class="form-floating">
-          <input class="form-control" id="floatingInput" required v-model="username">
+          <input class="form-control" id="floatingInput" required v-model="newURL">
           <label for="floatingInput">Change Profile Picture</label>
         </div>
         <br>
 
 
-        <a @click="closesignin(2)" class="btn-get-started">Submit</a>
+        <a @click="updateProfile" class="btn-get-started">Submit</a>
         <br>
-        <a @click="closesignin(2)" class="btn-get-started">Sign out</a>
+        <a @click="logout" class="btn-get-started">Sign out</a>
       </div>
     </div>
 
