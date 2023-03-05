@@ -2,6 +2,7 @@ let functions = require("firebase-functions");
 let admin = require("firebase-admin");
 let cors = require("cors")({origin: true});
 let serviceAccount = require("./test-project-3d277-firebase-adminsdk-qfyec-e57396a808.json");
+let reqPromise = require('request-promise');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -138,6 +139,65 @@ exports.getProfileInfo = functions.https.onRequest( (req, res) => {
           }
         }
       }
+    });
+  });
+});
+
+//gets a new token
+//the token will be in the response.data.access_token json header
+exports.getSpotifyToken = functions.https.onRequest( (req, res) => {
+  cors(req, res, () => {
+    //client secret and id provided by spotify api
+    const clientId = "2165473919fe4b0891ac4becaa5866ee";
+    const clientSecret = "b78f201d7bc747a2ba335c1d694d27ce";
+
+    //headers for POST request
+    let _headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
+    };
+
+    //options for POST request
+    let options = {
+      method: 'POST',
+      uri: 'https://accounts.spotify.com/api/token',
+      body: 'grant_type=client_credentials',
+      headers: _headers,
+      json: true
+    };
+    
+    //make the request and return the result
+    //reqPromise is the 'request-promise' node package (used instead of fetch)
+    reqPromise(options).then((result) => {
+      //firebase requires the response to be sent under the data header
+      res.send({data: result});
+    }).catch((error) => {
+      res.send({data: error});
+    });
+  });
+});
+
+//searches spotify for artists
+//send request as {token: token, term: searchTerm, limit: limit}
+exports.searchArtist = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    //get the variables
+    const token = req.body.data.token;
+    const term = req.body.data.term;
+    const limit = req.body.data.limit;
+
+    let options = {
+      method: 'GET',
+      uri: `https://api.spotify.com/v1/search?q=${term}&type=artist&limit=${limit}`,
+      headers: {'Authorization': `Bearer ${token}`},
+      json: true
+    };
+
+    //make the request
+    reqPromise(options).then((result) => {
+      res.send({data: result});
+    }).catch((error) => {
+      res.send({data: error});
     });
   });
 });
