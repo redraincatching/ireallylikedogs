@@ -219,6 +219,32 @@ exports.searchArtist = functions.https.onRequest((req, res) => {
   });
 });
 
+// searches with genre
+// send request as {token: token, term: searchTerm, genre: genre, limit: limit}
+exports.searchHipsterArtist = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    //get the variables
+    const token = req.body.data.token;
+    const term = req.body.data.term;
+    const genre = req.body.data.genre;
+    const limit = req.body.data.limit;
+
+    let options = {
+      method: 'GET',
+      uri: `https://api.spotify.com/v1/search?q=${term}&type=artist&genre=${genre}&limit=${limit}`,
+      headers: { 'Authorization': `Bearer ${token}` },
+      json: true
+    };
+
+    //make the request
+    reqPromise(options).then((result) => {
+      res.send({ data: result });
+    }).catch((error) => {
+      res.send({ data: error });
+    });
+  });
+});
+
 // get related artists
 //send request as {token: token, id: artistId}
 exports.getRelatedArtists = functions.https.onRequest((req, res) => {
