@@ -306,6 +306,31 @@ exports.getTopTracks = functions.https.onRequest((req, res) => {
     // specify the options
     let options = {
       method: 'GET',
+      uri: `https://api.spotify.com/v1/artists/${id}/top-tracks`,
+      headers: { 'Authorization': `Bearer ${token}` },
+      json: true
+    };
+
+    // make the request
+    reqPromise(options).then((result) => {
+      res.send({ data: result });
+    }).catch((error) => {
+      res.send({ data: error });
+    });
+  });
+});
+
+// get artist's albums
+// send request as {token: token, id: artistId}
+exports.getAlbums = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    // get the variables
+    const token = req.body.data.token;
+    const id = req.body.data.id;
+
+    // specify the options
+    let options = {
+      method: 'GET',
       uri: `https://api.spotify.com/v1/artists/${id}/albums?include_groups=album,single`,
       headers: { 'Authorization': `Bearer ${token}` },
       json: true
