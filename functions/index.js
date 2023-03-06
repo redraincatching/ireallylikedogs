@@ -221,7 +221,7 @@ exports.searchArtist = functions.https.onRequest((req, res) => {
 
 // searches with genre
 // send request as {token: token, term: searchTerm, genre: genre, limit: limit}
-exports.searchHipsterArtist = functions.https.onRequest((req, res) => {
+exports.searchArtistByGenre = functions.https.onRequest((req, res) => {
   cors(req, res, () => {
     //get the variables
     const token = req.body.data.token;
