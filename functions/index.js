@@ -267,17 +267,18 @@ exports.getArtist = functions.https.onRequest((req, res) => {
 });
 
 // get related artists
-//send request as {token: token, id: artistId}
+//send request as {token: token, id: artistId, limit: limit}
 exports.getRelatedArtists = functions.https.onRequest((req, res) => {
   cors(req, res, () => {
     // get the variables
     const token = req.body.data.token;
     const id = req.body.data.id;
+    const limit = req.body.data.limit;
 
     // specify the options
     let options = {
       method: 'GET',
-      url: `https://api.spotify.com/v1/artists/${id}/related-artists`,
+      url: `https://api.spotify.com/v1/artists/${id}/related-artists?limit=${limit}`,
       headers: { 'Authorization': `Bearer ${token}` }
     };
 
