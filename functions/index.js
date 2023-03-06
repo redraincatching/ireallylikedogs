@@ -245,6 +245,31 @@ exports.searchHipsterArtist = functions.https.onRequest((req, res) => {
   });
 });
 
+// get single artist by id
+// send request as {token: token, id: artistId}
+exports.getArtist = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    // get the variables
+    const token = req.body.data.token;
+    const id = req.body.data.id;
+
+    // specify the options
+    let options = {
+      method: 'GET',
+      uri: `https://api.spotify.com/v1/artists/${id}`,
+      headers: { 'Authorization': `Bearer ${token}` },
+      json: true
+    };
+
+    // make the request
+    reqPromise(options).then((result) => {
+      res.send({ data: result });
+    }).catch((error) => {
+      res.send({ data: error });
+    });
+  });
+});
+
 // get related artists
 //send request as {token: token, id: artistId}
 exports.getRelatedArtists = functions.https.onRequest((req, res) => {
@@ -257,6 +282,31 @@ exports.getRelatedArtists = functions.https.onRequest((req, res) => {
     let options = {
       method: 'GET',
       uri: `https://api.spotify.com/v1/artists/${id}/related-artists`,
+      headers: { 'Authorization': `Bearer ${token}` },
+      json: true
+    };
+
+    // make the request
+    reqPromise(options).then((result) => {
+      res.send({ data: result });
+    }).catch((error) => {
+      res.send({ data: error });
+    });
+  });
+});
+
+// get top tracks
+// send request as {token: token, id: artistId}
+exports.getTopTracks = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    // get the variables
+    const token = req.body.data.token;
+    const id = req.body.data.id;
+
+    // specify the options
+    let options = {
+      method: 'GET',
+      uri: `https://api.spotify.com/v1/artists/${id}/albums?include_groups=album,single`,
       headers: { 'Authorization': `Bearer ${token}` },
       json: true
     };
