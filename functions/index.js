@@ -2,7 +2,7 @@ let functions = require("firebase-functions");
 let admin = require("firebase-admin");
 let cors = require("cors")({origin: true});
 let serviceAccount = require("./test-project-3d277-firebase-adminsdk-qfyec-e57396a808.json");
-let reqPromise = require('request-promise');
+let axios = require('axios');
 const { compileScript } = require("vue/compiler-sfc");
 
 admin.initializeApp({
@@ -179,17 +179,16 @@ exports.getSpotifyToken = functions.https.onRequest( (req, res) => {
       method: 'POST',
       uri: 'https://accounts.spotify.com/api/token',
       body: 'grant_type=client_credentials',
-      headers: _headers,
-      json: true
+      headers: _headers
     };
     
     //make the request and return the result
     //reqPromise is the 'request-promise' node package (used instead of fetch)
-    reqPromise(options).then((result) => {
+    axios(options).then((result) => {
       //firebase requires the response to be sent under the data header
-      res.send({data: result});
+      res.send({data: result.data});
     }).catch((error) => {
-      res.send({data: error});
+      res.send({data: error.data});
     });
   });
 });
@@ -205,16 +204,64 @@ exports.searchArtist = functions.https.onRequest((req, res) => {
 
     let options = {
       method: 'GET',
-      uri: `https://api.spotify.com/v1/search?q=${term}&type=artist&limit=${limit}`,
-      headers: {'Authorization': `Bearer ${token}`},
-      json: true
+      url: `https://api.spotify.com/v1/search?q=${term}&type=artist&limit=${limit}`,
+      headers: {'Authorization': `Bearer ${token}`}
     };
 
     //make the request
-    reqPromise(options).then((result) => {
-      res.send({data: result});
+    axios(options).then((result) => {
+      res.send({data: result.data});
     }).catch((error) => {
-      res.send({data: error});
+      res.send({data: error.data});
+    });
+  });
+});
+
+// searches with genre
+// send request as {token: token, term: searchTerm, genre: genre, limit: limit}
+exports.searchArtistByGenre = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    //get the variables
+    const token = req.body.data.token;
+    const term = req.body.data.term;
+    const genre = req.body.data.genre;
+    const limit = req.body.data.limit;
+
+    let options = {
+      method: 'GET',
+      url: `https://api.spotify.com/v1/search?q=${term}&type=artist&genre=${genre}&limit=${limit}`,
+      headers: { 'Authorization': `Bearer ${token}` }
+    };
+
+    //make the request
+    axios(options).then((result) => {
+      res.send({ data: result.data });
+    }).catch((error) => {
+      res.send({ data: error.data });
+    });
+  });
+});
+
+// get single artist by id
+// send request as {token: token, id: artistId}
+exports.getArtist = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    // get the variables
+    const token = req.body.data.token;
+    const id = req.body.data.id;
+
+    // specify the options
+    let options = {
+      method: 'GET',
+      url: `https://api.spotify.com/v1/artists/${id}`,
+      headers: { 'Authorization': `Bearer ${token}` }
+    };
+
+    // make the request
+    axios(options).then((result) => {
+      res.send({ data: result.data });
+    }).catch((error) => {
+      res.send({ data: error.data });
     });
   });
 });
@@ -230,16 +277,63 @@ exports.getRelatedArtists = functions.https.onRequest((req, res) => {
     // specify the options
     let options = {
       method: 'GET',
-      uri: `https://api.spotify.com/v1/artists/${id}/related-artists`,
-      headers: { 'Authorization': `Bearer ${token}` },
-      json: true
+      url: `https://api.spotify.com/v1/artists/${id}/related-artists`,
+      headers: { 'Authorization': `Bearer ${token}` }
     };
 
     // make the request
-    reqPromise(options).then((result) => {
-      res.send({ data: result });
+    axios(options).then((result) => {
+      res.send({ data: result.data });
     }).catch((error) => {
-      res.send({ data: error });
+      res.send({ data: error.data });
+    });
+  });
+});
+
+// get top tracks
+// send request as {token: token, id: artistId}
+exports.getTopTracks = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    // get the variables
+    const token = req.body.data.token;
+    const id = req.body.data.id;
+
+    // specify the options
+    let options = {
+      method: 'GET',
+      uri: `https://api.spotify.com/v1/artists/${id}/top-tracks`,
+      headers: { 'Authorization': `Bearer ${token}` }
+    };
+
+    // make the request
+    axios(options).then((result) => {
+      res.send({ data: result.data });
+    }).catch((error) => {
+      res.send({ data: error.data });
+    });
+  });
+});
+
+// get artist's albums
+// send request as {token: token, id: artistId}
+exports.getAlbums = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    // get the variables
+    const token = req.body.data.token;
+    const id = req.body.data.id;
+
+    // specify the options
+    let options = {
+      method: 'GET',
+      url: `https://api.spotify.com/v1/artists/${id}/albums?include_groups=album,single`,
+      headers: { 'Authorization': `Bearer ${token}` }
+    };
+
+    // make the request
+    axios(options).then((result) => {
+      res.send({ data: result.data });
+    }).catch((error) => {
+      res.send({ data: error.data });
     });
   });
 });
