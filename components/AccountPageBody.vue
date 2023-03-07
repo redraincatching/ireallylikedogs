@@ -14,7 +14,7 @@ export default {
       password: "",
       uid: "",
       isLoggedIn: false,
-      listener: null,
+
       //account information
       name: "",
       bio: "",
@@ -27,31 +27,32 @@ export default {
       newURL: "",
     }
   },
-  created(){
+  created() {
     this.refresh();
   },
-  // beforeUpdate(){
-  //   if(this.isLoggedIn){
-  //     this.refresh();
-  //   }
-  // },
   watch: {
     '$route.params': {
-      handler(){
+      handler() {
         this.refresh();
       }
     }
   },
   methods: {
+    //refresh the data contained on the page
     refresh() {
       console.log(this.uid);
 
+      //get comonenets
       const auth = getAuth(app);
       const functions = getFunctions(app);
-      
+
+      //onAuthStateChanged returns a function which unhooks the event listener
       let listener = onAuthStateChanged(auth, (user) => {
-        this.uid = user ? user.uid : this.$route.params.uid; 
+        //if there is no user, user.uid will be undefined
+        this.uid = user ? user.uid : this.$route.params.uid;
         this.isLoggedIn = user ? true : false;
+
+        //if logged in and there is a valid user
         if (this.isLoggedIn && this.uid != undefined) {
           console.log(this.uid);
           connectFunctionsEmulator(functions, "localhost", 5001);
@@ -73,6 +74,7 @@ export default {
           });
         }
       });
+      //unhook the listener
       listener();
     },
     closesignin(i) {
@@ -89,37 +91,56 @@ export default {
       this.uid = "";
       this.isLoggedIn = false;
     },
-    updateProfile(){
+    updateProfile() {
+
+      //update both
+      if (this.newBio.length > 0 && this.newURL.length > 0) {
+        this.updateBio();
+        this.updatePFP();
+      }
+      //update bio
+      else if (this.newBio.length > 0) {
+        this.updateBio();
+      }
+      //update pfp
+      else if (this.newURL.length > 0) {
+        this.updatePFP();
+      }
+
+      this.closesignin(2);
+    },
+    //update bio
+    updateBio() {
       const functions = getFunctions(app);
       connectFunctionsEmulator(functions, "localhost", 5001);
 
       //define function
       const update = httpsCallable(functions, "updateProfile");
 
-      //update bio
-      if(this.newBio.length > 0){
-        console.log(this.uid);
-        update({"id": this.uid, "field": 'bio', "value": this.newBio}).then((res) => {
-          console.log(res.data.body);
-          this.newBio = "";
-          this.refresh();
-        }).catch((error) => {
-          console.log(error.code, error.message);
-        });
-      }
+      console.log(this.uid);
+      update({ "id": this.uid, "field": 'bio', "value": this.newBio }).then((res) => {
+        console.log(res.data.body);
+        this.newBio = "";
+        this.refresh();
+      }).catch((error) => {
+        console.log(error.code, error.message);
+      });
+    },
+    //update pfp
+    updatePFP() {
+      const functions = getFunctions(app);
+      connectFunctionsEmulator(functions, "localhost", 5001);
 
-      //update pfp
-      if(this.newURL.length > 0){
-        update({id: this.uid, field: 'pfpURL', value: this.newURL}).then((res) => {
-          console.log(res.data.body);
-          this.newURL = "";
-          this.refresh();
-        }).catch((error) => {
-          console.log(error.code, error.message);
-        });
-      }
-
-      this.closesignin(2);
+      //define function
+      const update = httpsCallable(functions, "updateProfile");
+      console.log(this.uid);
+      update({ "id": this.uid, "field": 'pfpURL', "value": this.newURL }).then((res) => {
+        console.log(res.data.body);
+        this.newURL = "";
+        this.refresh();
+      }).catch((error) => {
+        console.log(error.code, error.message);
+      });
     }
   },
   computed: {
@@ -127,7 +148,7 @@ export default {
       return this.pfp == "" ? "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" : this.pfp;
     }
   },
-  
+
 }
 </script>
 <template>
