@@ -2,6 +2,14 @@
 import app from "../../api/firebase";
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from "firebase/functions";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+// import { openModal, closeModal, startLoad, endLoad } from "../assets/js/frontendFunctions.js"
+
+//get components
+const auth = getAuth(app);
+const functions = getFunctions(app);
+
+//TODO: remove emulator line when deploying
+// connectFunctionsEmulator(functions, "localhost", 5001);
 
 export default {
   data() {
@@ -10,55 +18,58 @@ export default {
       username: "",
       password: "",
       uid: "",
-      loading: false,
-      loadingBar: null,
       isLoggedIn: false,
+      loadingBar: "",
     }
   },
   created() {
-    const auth = getAuth(app);
     onAuthStateChanged(auth, (user) => {
       this.isLoggedIn = user ? true : false;
     });
   },
   computed: {
     checkLogin() {
-      const auth = getAuth(app);
       onAuthStateChanged(auth, (user) => {
         this.isLoggedIn = user ? true : false;
       });
     }
   },
   methods: {
-    //closes the sign in or sign up pop ups
-    //get an array of all the pop ups with the style of a user identifcation section
-    //select the correct one based on the index (they will appear on the page in the order of their definitions in the html)
-    closesignin(i) {
+
+    opensignin() {
+      // openModal(0);
+
+      //gets an array of all the popups in the order they are defined on the page
       let elms = document.querySelectorAll('.modal');
-      elms[i].style.display = "none";
+      //shows the one you want to show
+      elms[0].style.display = "flex";
     },
 
-    //opens the sign in or sign up pop ups
-    //get an array of all the pop ups with the style of a user identifcation section
-    //select the correct one based on the index 
-    // (the popups will appear in the array in the order of their definitions in the html)
-    opensignin(i) {
+    closesignin() {
+      // closeModal(0);
+
+      //gets an array of all the popups in the order they are defined on the page
       let elms = document.querySelectorAll('.modal');
-      elms[i].style.display = "flex";
+      //hides the one you want to hide
+      elms[0].style.display = "none";
     },
 
-    //show the loading bar
-    showLoad() {
-      if (!this.loading) {
-        this.loadingBar = this.$loading.show();
-        this.loading = true;
-      }
+    opensignup() {
+      // openModal(1);
+
+      //gets an array of all the popups in the order they are defined on the page
+      let elms = document.querySelectorAll('.modal');
+      //shows the one you want to show
+      elms[1].style.display = "flex";
     },
 
-    //hide the loading bar
-    hideLoad() {
-      this.loadingBar.hide();
-      this.loading = false;
+    closesignup() {
+      // closeModal(1);
+
+      //gets an array of all the popups in the order they are defined on the page
+      let elms = document.querySelectorAll('.modal');
+      //hides the one you want to hide
+      elms[1].style.display = "none";
     },
 
     isEmail(e) {
@@ -69,14 +80,11 @@ export default {
     //otherwise just calls login
     //necessary to allow the promise to resolve from getEmail before trying to sign in to firebase
     beforeLogin() {
+      this.loadingBar = this.$loading.show();
+
       //regex test
       if (!this.isEmail(this.email)) {
         console.log("Not Email; Getting ID from Username");
-
-        const functions = getFunctions(app);
-
-        //TODO: remove emulator line when deploying
-        connectFunctionsEmulator(functions, "localhost", 5001);
 
         //define the function
         const getEmail = httpsCallable(functions, "getEmail");
@@ -90,9 +98,11 @@ export default {
               break;
             case 1:
               console.log("User Does Not Exist");
+              this.loadingBar.hide();
               break;
             default:
               console.log("Unknown Code Returned From Server");
+              this.loadingBar.hide();
               break;
           }
         });
@@ -104,23 +114,15 @@ export default {
 
     //login function
     login() {
-      this.showLoad(); //loading
-
-      //get necessary components
-      const auth = getAuth(app);
-      const functions = getFunctions(app);
-
-      //TODO: remove emulator line when deploying
-      connectFunctionsEmulator(functions, "localhost", 5001);
 
       //sign in with firebase auth using email and password
       signInWithEmailAndPassword(auth, this.email, this.password).then((userCred) => {
         const user = userCred.user;
         this.uid = user.uid;
         this.closesignin(0); //close the sign in popup
-        this.$router.push({ name: 'AccountPage', params: {uid: user.uid}});
+        this.$router.push({ name: 'AccountPage', params: { uid: user.uid } });
         this.isLoggedIn = true;
-        this.hideLoad();  //done loading
+        this.loadingBar.hide();
       }).catch((error) => {
         //handle the firebase errors
         switch (error.code) {
@@ -139,14 +141,14 @@ export default {
             break;
         }
 
-        this.hideLoad();
+        this.loadingBar.hide();
       });
     },
 
     //register an account
     //calls login after successful execution
     register() {
-      this.showLoad();  //loading
+      this.loadingBar = this.$loading.show();
 
       //dont run if the email is invalid
       if (!this.isEmail(this.email)) {
@@ -155,18 +157,11 @@ export default {
         return;
       }
 
-      if(this.username == ""){
+      if (this.username == "") {
         console.log("Enter a Username");
         this.hideLoad();
         return;
       }
-
-      //get componenets
-      const functions = getFunctions(app);
-      const auth = getAuth(app);
-
-      //TODO: remove emulator line when deploying
-      connectFunctionsEmulator(functions, "localhost", 5001);
 
       //define the function
       const checkUname = httpsCallable(functions, "checkUniqueUsername");
@@ -175,7 +170,6 @@ export default {
       checkUname({ "username": this.username }).then((res) => {
         if (res.data.isTaken) {
           console.log(res.data.message);
-          this.hideLoad();
           return;
         }
         else {
@@ -206,23 +200,20 @@ export default {
             console.log(error.code);
             console.log(error.message);
           }
-
-          this.hideLoad();
         });
       }).catch((error) => {
         console.log(error);
-        this.hideLoad();
+        this.loadingBar.hide();
       });
     },
 
     logout() {
-      this.showLoad();
-      const auth = getAuth(app);
+      this.loadingBar = this.$loading.show();
       auth.signOut();
-      this.$router.push({path: '/AccountPage/'});
+      this.$router.push({ path: '/AccountPage/' });
       this.uid = "";
       this.isLoggedIn = false;
-      this.hideLoad();
+      this.loadingBar.hide();
     }
   }
 }
@@ -232,7 +223,7 @@ export default {
   <div id="myModal" class="modal"> <!-- Sign in popup  -->
     <!-- Modal content -->
     <div style="align-items: center" class="modal-content">
-      <span class="close" @click="closesignin(0)">&times;</span>
+      <span class="close" @click="closesignin()">&times;</span>
       <p style="font-size: 40px; color: white">Sign in</p>
       <label style="color: #949494;">Email or Username</label>
       <input style="height: 40px; border-radius: 7.5px;" required v-model="email"><br>
@@ -245,7 +236,7 @@ export default {
   <div id="myModal1" class="modal"> <!-- create account popup  -->
     <!-- Modal content -->
     <div style="align-items: center" class="modal-content">
-      <span class="close" @click="closesignin(1)">&times;</span>
+      <span class="close" @click="closesignup()">&times;</span>
       <p style="font-size: 40px; text-align: center; color: white">Create account</p>
       <label style="color: #949494;">Email</label>
       <input style="height: 40px; border-radius: 7.5px;" required v-model="email"><br>
@@ -280,9 +271,9 @@ export default {
             <router-link to="/">Home</router-link>
           </li>
           <li v-if="!this.isLoggedIn" class="nav-item" style="list-style-type: none; margin-right: 30px;"><a
-              class="myBtn1" id="myBtn1" @click="opensignin(1)">Sign Up</a></li>
+              class="myBtn1" id="myBtn1" @click="opensignup()">Sign Up</a></li>
           <li v-if="!this.isLoggedIn" class="nav-item" style="list-style-type: none; margin-right: 30px;"><a class="myBtn"
-              id="myBtn" @click="opensignin(0)">Login</a></li>
+              id="myBtn" @click="opensignin()">Login</a></li>
           <li v-if="this.isLoggedIn" class="nav-item" style="list-style-type: none; margin-right: 30px;"><a class="myBtn"
               id="myBtn" @click="logout()">Log Out</a></li>
           <li class="nav-item" style="margin-right: 30px;">
@@ -293,7 +284,7 @@ export default {
           </li>
 
           <li class="nav-item">
-            <router-link :to="{ path: '/AccountPage/'}">Account</router-link>
+            <router-link :to="{ path: '/AccountPage/' }">Account</router-link>
           </li>
 
         </ul>
