@@ -1,14 +1,18 @@
 
 <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous" /> -->
 <script>
-import app from "../../api/firebase";
+import { app, getProfileInfo, setProfileInfo, setUID } from "../../api/firebase";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from "firebase/functions";
-// import { openModal, closeModal, startLoad, endLoad } from "../assets/js/frontendFunctions.js"
+import { openModal, closeModal, startLoad, endLoad } from "../assets/js/frontendFunctions"
 
 //get componenets
 const functions = getFunctions(app);
 const auth = getAuth(app);
+
+//define functions
+const requestProfileInfo = httpsCallable(functions, "getProfileInfo");
+const update = httpsCallable(functions, "updateProfile");
 
 //connect emulator
 // connectFunctionsEmulator(functions, "localhost", 5001);
@@ -18,24 +22,16 @@ export default {
     return {
       //login information
       email: "",
-      username: "",
       password: "",
-      uid: "",
+      uid: "",  //this is here instead of the global one because it needs to work from the url
       isLoggedIn: false,
 
       //account information
-      name: "",
-      bio: "",
-      pfp: "",
-      likedAlbums: [],
-      likedArtists: [],
+      accountInfo: {},
 
       //updated profile temp variables
       newBio: "",
       newURL: "",
-
-      //loading bar
-      loadingBar: "",
     }
   },
   created() {
@@ -50,46 +46,24 @@ export default {
   },
   methods: {
     opensignin() {
-      // openModal(0);
-
-      //gets an array of all the popups in the order they are defined on the page
-      let elms = document.querySelectorAll('.modal');
-      //shows the one you want to show
-      elms[0].style.display = "flex";
+      openModal(0);
     },
 
     opensignup() {
-      // openModal(1);
-
-      //gets an array of all the popups in the order they are defined on the page
-      let elms = document.querySelectorAll('.modal');
-      //shows the one you want to show
-      elms[1].style.display = "flex";
+      openModal(1);
     },
 
     openProfileEdit() {
-      // openModal(2);
-
-      //gets an array of all the popups in the order they are defined on the page
-      let elms = document.querySelectorAll('.modal');
-      //shows the one you want to show
-      elms[2].style.display = "flex";
+      openModal(2);
     },
 
     closeProfileEdit() {
-      // closeModal(2);
-
-      //gets an array of all the popups in the order they are defined on the page
-      let elms = document.querySelectorAll('.modal');
-      //hides the one you want to hide
-      elms[2].style.display = "none";
+      closeModal(2);
     },
 
     //refresh the data contained on the page
     refresh() {
-      this.loadingBar = this.$loading.show();
-
-      console.log(this.uid);
+      this.accountInfo = {};
 
       //onAuthStateChanged returns a function which unhooks the event listener
       let listener = onAuthStateChanged(auth, (user) => {
@@ -97,43 +71,42 @@ export default {
         this.uid = user ? user.uid : this.$route.params.uid;
         this.isLoggedIn = user ? true : false;
 
-        //if logged in and there is a valid user
-        if (this.isLoggedIn && this.uid != undefined) {
-          console.log(this.uid);
-          //define functions
-          const getProfileInfo = httpsCallable(functions, "getProfileInfo");
+        //if logged in and there is a valid user and the data has not been retrieved
+        if (this.isLoggedIn && this.uid != undefined && JSON.stringify(getProfileInfo()) == '{}') {
+          console.log("Getting Profile From Server");
+
           //get the profile information of the user once their are signed in
           //stored under the users id
-          getProfileInfo({ "id": this.uid }).then((info) => {
-            console.log(info.data);
+          requestProfileInfo({ "id": this.uid }).then((info) => {
             //set the data on the page
-            this.name = info.data.username;
-            this.bio = info.data.bio;
-            this.pfp = info.data.pfpURL;
-            this.likedAlbums = info.data.likedAlbums;
-            this.likedArtists = info.data.likedArtists;
+            setProfileInfo(info.data);
+            this.accountInfo = info.data;
           }).catch((error) => {
             console.log(error.code);
             console.log(error.message);
           });
         }
+        else {
+          this.accountInfo = getProfileInfo();
+        }
       });
       //unhook the listener
       listener();
-      this.loadingBar.hide();
+
+      // endLoad();
     },
 
     logout() {
-      this.loadingBar = this.$loading.show();
+      startLoad(this);
       auth.signOut();
-      this.uid = "";
+      setUID("");
+      setProfileInfo({});
       this.isLoggedIn = false;
-      this.loadingBar.hide();
+      this.$router.push({ path: '/AccountPage/' });
+      endLoad();
     },
 
     updateProfile() {
-      this.loadingBar = this.$loading.show();
-      
       //update both
       if (this.newBio.length > 0 && this.newURL.length > 0) {
         this.updateBio();
@@ -149,41 +122,43 @@ export default {
       }
 
       this.closeProfileEdit();
+      this.refresh();
     },
 
     //update bio
     updateBio() {
-      //define function
-      const update = httpsCallable(functions, "updateProfile");
-
-      console.log(this.uid);
+      startLoad(this);
       update({ "id": this.uid, "field": 'bio', "value": this.newBio }).then((res) => {
         console.log(res.data.body);
+        this.accountInfo.bio = this.newBio;
+        setProfileInfo(this.accountInfo);
         this.newBio = "";
-        this.refresh();
+        endLoad();
       }).catch((error) => {
         console.log(error.code, error.message);
+        endLoad();
       });
     },
 
     //update pfp
     updatePFP() {
-      //define function
-      const update = httpsCallable(functions, "updateProfile");
-      console.log(this.uid);
+      startLoad(this);
       update({ "id": this.uid, "field": 'pfpURL', "value": this.newURL }).then((res) => {
         console.log(res.data.body);
+        this.accountInfo.pfpURL = this.newURL;
+        setProfileInfo(this.accountInfo);
         this.newURL = "";
-        this.refresh();
+        endLoad();
       }).catch((error) => {
         console.log(error.code, error.message);
+        endLoad();
       });
     },
   },
   computed: {
     pfpURL() {
-      return this.pfp == "" ? "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" : this.pfp;
-    }
+      return this.accountInfo.pfpURL ? this.accountInfo.pfpURL : "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+    },
   },
 
 }
@@ -237,7 +212,7 @@ export default {
 
                   </div>
                   <div class="ms-4 mt-5flex-column" style="width: 150px; background-color:#151515">
-                    <img v-bind:src="this.pfpURL" alt="Generic placeholder image"
+                    <img :src="this.pfpURL" alt="Generic placeholder image"
                       class="img-fluid img-thumbnail mt-4 mb-2" style="width: 150px; z-index: 1">
                     <button type="button"
                       style="z-index: 1; background-color:white; border-radius:4px; border:none; width: 150px; "
@@ -247,8 +222,8 @@ export default {
 
                   </div>
                   <div class="ms-3" style="margin-top: 30px;">
-                    <h2 style="text-align:left; font-size:50px">{{ this.name }}</h2>
-                    <p>{{ this.bio }}</p>
+                    <h2 style="text-align:left; font-size:50px">{{ this.accountInfo.username }}</h2>
+                    <p>{{ this.accountInfo.bio }}</p>
                   </div>
                 </div>
                 <br>
