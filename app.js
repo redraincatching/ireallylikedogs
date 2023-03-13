@@ -1,7 +1,8 @@
 let users = {
-    user1 : {'a':1, 'c':1},
-    user2 : {'b':1, 'd':-1},
-    user3 : {'c':1}
+    // some sample data
+    user1: { 'a': 1, 'c': 1 },
+    user2: { 'b': 1, 'd': -1 },
+    user3: { 'c': 1 }
 }
 
 function presentArtist() {
@@ -39,8 +40,8 @@ function presentArtist() {
             continue;
         }
 
-        
-    }while(true)
+
+    } while (true)
 
     // update list of likes (don't bother showing dislikes)
     updateLists();
@@ -62,60 +63,72 @@ function getProbability(item) {
 
     // call recommend with mode equal to 1 or 
 
-    for (let i = 0; i < Object.keys(users).length ; i++) {
+    for (let i = 0; i < Object.keys(users).length; i++) {
         for (let j = 0; j < Object.keys(Object.values(users)[i]).length; j++) {
+            // move through every liked song and update recommendation based on that
+            // the syntax for iterating through nested objects is, to use the technical term, wank
             probability_pos = probability_pos * recommend(Object.keys(Object.values(users)[i])[j], item, 1)
         }
     }
 
 
 
-    // then maybe do the same for dislike and subtract? idk yet
-
+    // then the same thing for the negative probability
     for (let i = 0; i < Object.keys(users).length; i++) {
         for (let j = 0; j < Object.keys(Object.values(users)[i]).length; j++) {
             probability_neg = probability_neg * recommend(Object.keys(Object.values(users)[i])[j], item, -1)
         }
     }
 
-    // want to be positive i guess
-    const probability = probability_pos - probability_neg*0.5;
+    // and then get total probability, although currently it's very positively weighted
+    const probability = probability_pos - probability_neg * 0.5;
     console.log(probability);
 
     return probability;
 }
 
 function recommend(x, y, mode) {
-    let totalOccurencesX = 0;
-    let totalOccurencesXY = 0;
-    let totalUsersXY = 0;
-    let finalProb = 0;
+    // user likes x, so do we recommend y?
+    // mode is whether we're checking for likes (1) or dislikes (-1)
+    let totalOccurencesX = 0;   // the amount of times item x occurs
+    let totalOccurencesXY = 0;  // the amount of times x and y occur together
+    let totalUsersXY = 0;       // users who have either x or y occurring
+    let finalProb = 0;          // explanatory
 
     for (const user in users) {
+        // if x occurs, increment usersX and usersXY
         if (users[user][x] === mode) {
             totalOccurencesX++;
+            totalUsersXY++;
             if (users[user][y] === mode) {
+                // if X and Y increment occurencesXY
                 totalOccurencesXY++;
-                totalUsersXY++;
             }
         } else if (users[user][y] === mode) {
+            // if y occurs, increment usersXY
             totalUsersXY++;
         }
     }
 
-    const probXY = totalOccurencesXY / Object.keys(users).length;
-    
+    // probability of x and y is x and y over users who've liked both? not sure about this part
+    // if we want to change it to over all users we can use
+    // const probXY = totalOccurencesXY / Object.keys(users).length;
+    const probXY = totalOccurencesXY / totalUsersXY;
+
     if (totalOccurencesX == 0 || totalOccurencesXY == 0) {
+        // if no one's liked x or has liked x or y, then prob = mode (so basically it's in favour)
         finalProb = mode;
     }
     else {
-        finalProb = probXY * totalUsersXY;
+        // otherwise finalProb is the probability found
+        finalProb = probXY;
     }
 
     return finalProb;
 }
 
 function updateLists() {
+    // this just generates a bunch of <li> item </li> tags, dw about this
     const user_list = document.querySelector(".ulist");
     user_list.innerHTML = "";
 
